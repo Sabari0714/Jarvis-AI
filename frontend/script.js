@@ -1,7 +1,6 @@
 // ============================================================
-// ROLEX AI — UNIVERSAL LOCAL BRAIN v2
+// ROLEX AI — LOCAL BRAIN v3
 // NO API • NO GEMINI • NO OPENAI
-// Maths • Engineering • Physics • Conversion • Memory • Voice
 // ============================================================
 
 const chat = document.getElementById("chat");
@@ -36,30 +35,12 @@ function addMessage(sender, text) {
 
     row.innerHTML = `
         <strong>${sender}</strong>
-        <span>${escapeHTML(text)}</span>
+        <span>${escapeHTML(text).replaceAll("\n", "<br>")}</span>
     `;
 
     chat.appendChild(row);
     chat.scrollTop = chat.scrollHeight;
 }
-
-// ============================================================
-// MEMORY
-// ============================================================
-
-function saveMemory(key, value) {
-    memory[key.toLowerCase()] = value;
-    localStorage.setItem("rolex_memory", JSON.stringify(memory));
-}
-
-function clearMemory() {
-    memory = {};
-    localStorage.removeItem("rolex_memory");
-}
-
-// ============================================================
-// NUMBER FORMAT
-// ============================================================
 
 function fmt(n) {
     if (!Number.isFinite(n)) return "undefined";
@@ -70,13 +51,24 @@ function fmt(n) {
 }
 
 // ============================================================
-// SAFE MATH EXPRESSION ENGINE
-// Supports:
-// + - * / % ^
-// sqrt, cbrt, sin, cos, tan
-// asin, acos, atan
-// log, ln, exp, abs
-// pi, e
+// MEMORY
+// ============================================================
+
+function saveMemory(key, value) {
+    memory[key.toLowerCase()] = value;
+    localStorage.setItem(
+        "rolex_memory",
+        JSON.stringify(memory)
+    );
+}
+
+function clearMemory() {
+    memory = {};
+    localStorage.removeItem("rolex_memory");
+}
+
+// ============================================================
+// SAFE LOCAL MATH ENGINE
 // ============================================================
 
 const FUNCTIONS = {
@@ -92,26 +84,19 @@ const FUNCTIONS = {
     floor: Math.floor,
     ceil: Math.ceil,
     round: Math.round,
-    log: Math.log10,
     ln: Math.log,
+    log: Math.log10,
     exp: Math.exp
 };
 
 function normalizeExpression(exp) {
 
-    exp = exp
+    return exp
         .toLowerCase()
         .replaceAll("π", "pi")
         .replaceAll("×", "*")
         .replaceAll("÷", "/")
         .replaceAll("−", "-")
-        .replace(/\s+/g, " ");
-
-    exp = exp
-        .replace(/\bto the power of\b/g, "^")
-        .replace(/\bpower of\b/g, "^")
-        .replace(/\bsquared\b/g, "^2")
-        .replace(/\bcubed\b/g, "^3")
         .replace(/\bmultiplied by\b/g, "*")
         .replace(/\bmultiply by\b/g, "*")
         .replace(/\bdivided by\b/g, "/")
@@ -119,19 +104,12 @@ function normalizeExpression(exp) {
         .replace(/\bplus\b/g, "+")
         .replace(/\bminus\b/g, "-")
         .replace(/\btimes\b/g, "*")
-        .replace(/\binto\b/g, "*");
-
-    exp = exp
-        .replace(/கூட்டல்/g, "+")
-        .replace(/கூட்டு/g, "+")
-        .replace(/கழித்தல்/g, "-")
-        .replace(/கழி/g, "-")
-        .replace(/பெருக்கல்/g, "*")
-        .replace(/பெருக்கு/g, "*")
-        .replace(/வகுத்தல்/g, "/")
-        .replace(/வகுக்கு/g, "/");
-
-    return exp;
+        .replace(/\binto\b/g, "*")
+        .replace(/\bto the power of\b/g, "^")
+        .replace(/\bpower of\b/g, "^")
+        .replace(/\bsquared\b/g, "^2")
+        .replace(/\bcubed\b/g, "^3")
+        .replace(/\s+/g, " ");
 }
 
 function tokenize(exp) {
@@ -154,17 +132,18 @@ function tokenize(exp) {
 
             while (
                 i < exp.length &&
-                /[0-9.eE+-]/.test(exp[i])
+                /[0-9.eE]/.test(exp[i])
             ) {
-
-                if (
-                    (exp[i] === "+" || exp[i] === "-") &&
-                    num.length &&
-                    !/[eE]$/.test(num)
-                ) break;
-
                 num += exp[i];
                 i++;
+            }
+
+            if (
+                i < exp.length &&
+                (exp[i] === "+" || exp[i] === "-") &&
+                /[eE]/.test(num[num.length - 1])
+            ) {
+                num += exp[i++];
             }
 
             if (!Number.isFinite(Number(num))) {
@@ -193,7 +172,7 @@ function tokenize(exp) {
 
             tokens.push({
                 type: "word",
-                value: word.toLowerCase()
+                value: word
             });
 
             continue;
@@ -218,9 +197,9 @@ function tokenize(exp) {
 
 function evaluateExpression(expression, degrees = false) {
 
-    let exp = normalizeExpression(expression);
-
-    const tokens = tokenize(exp);
+    const tokens = tokenize(
+        normalizeExpression(expression)
+    );
 
     let pos = 0;
 
@@ -236,14 +215,22 @@ function evaluateExpression(expression, degrees = false) {
 
         const t = peek();
 
-        if (!t) throw new Error("Expected value");
+        if (!t) {
+            throw new Error("Expected value");
+        }
 
-        if (t.type === "operator" && t.value === "+") {
+        if (
+            t.type === "operator" &&
+            t.value === "+"
+        ) {
             consume();
             return primary();
         }
 
-        if (t.type === "operator" && t.value === "-") {
+        if (
+            t.type === "operator" &&
+            t.value === "-"
+        ) {
             consume();
             return -primary();
         }
@@ -256,10 +243,16 @@ function evaluateExpression(expression, degrees = false) {
         if (t.type === "word") {
 
             const word = t.value;
+
             consume();
 
-            if (word === "pi") return Math.PI;
-            if (word === "e") return Math.E;
+            if (word === "pi") {
+                return Math.PI;
+            }
+
+            if (word === "e") {
+                return Math.E;
+            }
 
             if (FUNCTIONS[word]) {
 
@@ -267,7 +260,9 @@ function evaluateExpression(expression, degrees = false) {
                     !peek() ||
                     peek().value !== "("
                 ) {
-                    throw new Error("Function requires value");
+                    throw new Error(
+                        "Function requires parentheses"
+                    );
                 }
 
                 consume();
@@ -287,22 +282,31 @@ function evaluateExpression(expression, degrees = false) {
                     degrees &&
                     ["sin", "cos", "tan"].includes(word)
                 ) {
-                    value = value * Math.PI / 180;
+                    value =
+                        value *
+                        Math.PI /
+                        180;
                 }
 
-                let result = FUNCTIONS[word](value);
+                let result =
+                    FUNCTIONS[word](value);
 
                 if (
                     degrees &&
                     ["asin", "acos", "atan"].includes(word)
                 ) {
-                    result = result * 180 / Math.PI;
+                    result =
+                        result *
+                        180 /
+                        Math.PI;
                 }
 
                 return result;
             }
 
-            throw new Error("Unknown word");
+            throw new Error(
+                "Unknown function"
+            );
         }
 
         if (
@@ -312,7 +316,8 @@ function evaluateExpression(expression, degrees = false) {
 
             consume();
 
-            const value = expressionLevel();
+            const value =
+                expressionLevel();
 
             if (
                 !peek() ||
@@ -340,9 +345,10 @@ function evaluateExpression(expression, degrees = false) {
 
             consume();
 
-            const right = primary();
+            const right = power();
 
-            left = Math.pow(left, right);
+            left =
+                Math.pow(left, right);
         }
 
         return left;
@@ -354,20 +360,34 @@ function evaluateExpression(expression, degrees = false) {
 
         while (
             peek() &&
-            ["*", "/", "%"].includes(peek().value)
+            ["*", "/", "%"].includes(
+                peek().value
+            )
         ) {
 
-            const op = consume().value;
+            const op =
+                consume().value;
+
             const right = power();
 
-            if (op === "*") left *= right;
+            if (op === "*") {
+                left *= right;
+            }
 
             if (op === "/") {
-                if (right === 0) throw new Error("Division by zero");
+
+                if (right === 0) {
+                    throw new Error(
+                        "Division by zero"
+                    );
+                }
+
                 left /= right;
             }
 
-            if (op === "%") left %= right;
+            if (op === "%") {
+                left %= right;
+            }
         }
 
         return left;
@@ -379,59 +399,83 @@ function evaluateExpression(expression, degrees = false) {
 
         while (
             peek() &&
-            ["+", "-"].includes(peek().value)
+            ["+", "-"].includes(
+                peek().value
+            )
         ) {
 
-            const op = consume().value;
+            const op =
+                consume().value;
+
             const right = term();
 
-            if (op === "+") left += right;
-            else left -= right;
+            if (op === "+") {
+                left += right;
+            } else {
+                left -= right;
+            }
         }
 
         return left;
     }
 
-    const result = expressionLevel();
+    const result =
+        expressionLevel();
 
     if (pos < tokens.length) {
-        throw new Error("Unexpected input");
+        throw new Error(
+            "Unexpected input"
+        );
     }
 
     if (!Number.isFinite(result)) {
-        throw new Error("Invalid result");
+        throw new Error(
+            "Invalid result"
+        );
     }
 
     return result;
 }
 
 // ============================================================
-// LINEAR EQUATION
-// ax + b = c
+// EQUATIONS
 // ============================================================
 
-function solveLinearEquation(text) {
+function solveLinear(text) {
 
     let s = text
         .toLowerCase()
         .replace(/\s+/g, "")
-        .replace(/−/g, "-");
+        .replace(/²/g, "^2");
 
-    if (!s.includes("=") || !s.includes("x")) {
+    if (
+        !s.includes("=") ||
+        !s.includes("x")
+    ) {
         return null;
     }
 
-    const sides = s.split("=");
+    if (s.includes("^2")) {
+        return null;
+    }
 
-    if (sides.length !== 2) return null;
+    const parts = s.split("=");
 
-    function coefficients(side) {
+    if (parts.length !== 2) {
+        return null;
+    }
 
-        side = side
-            .replace(/-/g, "+-")
-            .replace(/^\+/, "");
+    function sideValues(side) {
 
-        const terms = side.split("+");
+        side =
+            side.replace(/-/g, "+-");
+
+        if (side.startsWith("+")) {
+            side = side.substring(1);
+        }
+
+        const terms =
+            side.split("+");
 
         let a = 0;
         let b = 0;
@@ -448,7 +492,9 @@ function solveLinearEquation(text) {
                 if (
                     coefficient === "" ||
                     coefficient === "+"
-                ) coefficient = "1";
+                ) {
+                    coefficient = "1";
+                }
 
                 if (coefficient === "-") {
                     coefficient = "-1";
@@ -465,28 +511,36 @@ function solveLinearEquation(text) {
         return { a, b };
     }
 
-    const L = coefficients(sides[0]);
-    const R = coefficients(sides[1]);
+    const left =
+        sideValues(parts[0]);
 
-    const a = L.a - R.a;
-    const b = R.b - L.b;
+    const right =
+        sideValues(parts[1]);
 
-    if (!Number.isFinite(a) || !Number.isFinite(b)) {
+    const a =
+        left.a - right.a;
+
+    const b =
+        right.b - left.b;
+
+    if (
+        !Number.isFinite(a) ||
+        !Number.isFinite(b)
+    ) {
         return null;
     }
 
     if (a === 0) {
-        if (b === 0) return "Infinite solutions.";
-        return "No solution.";
+
+        if (b === 0) {
+            return "Infinite solutions";
+        }
+
+        return "No solution";
     }
 
     return `x = ${fmt(b / a)}`;
 }
-
-// ============================================================
-// QUADRATIC
-// ax² + bx + c = 0
-// ============================================================
 
 function solveQuadratic(text) {
 
@@ -498,20 +552,32 @@ function solveQuadratic(text) {
     if (
         !s.includes("x^2") ||
         !s.includes("=")
-    ) return null;
+    ) {
+        return null;
+    }
 
-    const sides = s.split("=");
+    const parts = s.split("=");
 
-    if (sides.length !== 2) return null;
+    if (parts.length !== 2) {
+        return null;
+    }
 
-    let expr = sides[0] + "-(" + sides[1] + ")";
+    const expr =
+        parts[0] + "-(" + parts[1] + ")";
 
-    expr = expr.replace(/^\((.*)\)$/, "$1");
+    const aMatch =
+        expr.match(
+            /([+-]?\d*\.?\d*)x\^2/
+        );
 
-    let aMatch = expr.match(/([+-]?\d*\.?\d*)x\^2/);
-    let bMatch = expr.match(/([+-]?\d*\.?\d*)x(?!\^)/);
+    const bMatch =
+        expr.match(
+            /([+-]?\d*\.?\d*)x(?!\^2)/
+        );
 
-    if (!aMatch) return null;
+    if (!aMatch) {
+        return null;
+    }
 
     let a = aMatch[1];
 
@@ -520,85 +586,133 @@ function solveQuadratic(text) {
 
     a = Number(a);
 
-    let b = bMatch ? bMatch[1] : "0";
+    let b =
+        bMatch ? bMatch[1] : "0";
 
     if (b === "" || b === "+") b = 1;
     if (b === "-") b = -1;
 
     b = Number(b);
 
-    let constant = expr
-        .replace(aMatch[0], "")
-        .replace(bMatch ? bMatch[0] : "", "");
+    let remaining =
+        expr.replace(aMatch[0], "");
 
-    constant = constant.replace(/[()]/g, "");
-
-    let c = Number(constant);
-
-    if (!Number.isFinite(a + b + c)) return null;
-
-    const d = b * b - 4 * a * c;
-
-    if (d < 0) {
-        return "No real roots.";
+    if (bMatch) {
+        remaining =
+            remaining.replace(
+                bMatch[0],
+                ""
+            );
     }
 
-    if (d === 0) {
-        return `x = ${fmt(-b / (2 * a))}`;
+    remaining =
+        remaining.replace(/[()]/g, "");
+
+    const c = Number(remaining);
+
+    if (
+        !Number.isFinite(a) ||
+        !Number.isFinite(b) ||
+        !Number.isFinite(c)
+    ) {
+        return null;
     }
 
-    const x1 = (-b + Math.sqrt(d)) / (2 * a);
-    const x2 = (-b - Math.sqrt(d)) / (2 * a);
+    const D =
+        b * b - 4 * a * c;
 
-    return `x₁ = ${fmt(x1)}, x₂ = ${fmt(x2)}`;
+    if (D < 0) {
+        return "No real roots";
+    }
+
+    if (D === 0) {
+
+        return `x = ${fmt(
+            -b / (2 * a)
+        )}`;
+    }
+
+    const x1 =
+        (-b + Math.sqrt(D)) /
+        (2 * a);
+
+    const x2 =
+        (-b - Math.sqrt(D)) /
+        (2 * a);
+
+    return (
+        `x₁ = ${fmt(x1)}, ` +
+        `x₂ = ${fmt(x2)}`
+    );
 }
 
 // ============================================================
-// BASIC MATH
+// PERCENTAGE / STATISTICS
 // ============================================================
 
-function percentageOf(text) {
+function percentage(text) {
 
-    let m = text.match(
-        /([\d.]+)\s*%\s*(?:of|from)\s*([\d.]+)/i
-    );
-
-    if (!m) return null;
-
-    return Number(m[1]) * Number(m[2]) / 100;
-}
-
-function percentageChange(text) {
-
-    let m = text.match(
-        /percentage\s+change\s+(?:from\s+)?([\d.]+)\s+(?:to|into)\s+([\d.]+)/i
-    );
+    const m =
+        text.match(
+            /([\d.]+)\s*%\s*(?:of|from)\s*([\d.]+)/i
+        );
 
     if (!m) return null;
 
-    const oldValue = Number(m[1]);
-    const newValue = Number(m[2]);
-
-    if (oldValue === 0) return null;
-
-    return ((newValue - oldValue) / oldValue) * 100;
+    return (
+        Number(m[1]) *
+        Number(m[2]) /
+        100
+    );
 }
 
 function average(text) {
 
-    let m = text.match(
-        /(?:average|mean)\s+(?:of\s+)?(.+)/i
-    );
+    const m =
+        text.match(
+            /(?:average|mean)\s+(?:of\s+)?(.+)/i
+        );
 
     if (!m) return null;
 
-    const nums = m[1]
-        .match(/-?\d+(?:\.\d+)?/g)
-        ?.map(Number);
+    const nums =
+        m[1]
+            .match(/-?\d+(?:\.\d+)?/g)
+            ?.map(Number);
 
-    if (!nums || nums.length === 0) return null;
+    if (!nums?.length) {
+        return null;
+    }
 
-    return nums.reduce((a, b) => a + b, 0) / nums.length;
+    return (
+        nums.reduce(
+            (a, b) => a + b,
+            0
+        ) / nums.length
+    );
+}
+
+function factorial(n) {
+
+    if (
+        !Number.isInteger(n) ||
+        n < 0 ||
+        n > 170
+    ) {
+        return null;
+    }
+
+    let result = 1;
+
+    for (
+        let i = 2;
+        i <= n;
+        i++
+    ) {
+        result *= i;
+    }
+
+    return result;
 }
 
 // ============================================================
@@ -614,8 +728,15 @@ function geometry(text) {
     );
 
     if (m) {
-        const r = Number(m[1]);
-        return `Circle area = ${fmt(Math.PI * r * r)}`;
+
+        const r =
+            Number(m[1]);
+
+        return (
+            `Circle area = ${fmt(
+                Math.PI * r * r
+            )}`
+        );
     }
 
     m = text.match(
@@ -623,30 +744,51 @@ function geometry(text) {
     );
 
     if (m) {
-        const r = Number(m[1]);
-        return `Circle circumference = ${fmt(2 * Math.PI * r)}`;
+
+        const r =
+            Number(m[1]);
+
+        return (
+            `Circle circumference = ${fmt(
+                2 * Math.PI * r
+            )}`
+        );
     }
 
     m = text.match(
-        /area\s+(?:of\s+)?(?:a\s+)?rectangle\s+([\d.]+)\s+(?:by|x)\s+([\d.]+)/i
+        /rectangle\s+area\s+([\d.]+)\s+(?:x|by)\s+([\d.]+)/i
     );
 
     if (m) {
-        const a = Number(m[1]);
-        const b = Number(m[2]);
 
-        return `Rectangle area = ${fmt(a * b)}`;
+        const a =
+            Number(m[1]);
+
+        const b =
+            Number(m[2]);
+
+        return (
+            `Rectangle area = ${fmt(a * b)}`
+        );
     }
 
     m = text.match(
-        /perimeter\s+(?:of\s+)?(?:a\s+)?rectangle\s+([\d.]+)\s+(?:by|x)\s+([\d.]+)/i
+        /rectangle\s+perimeter\s+([\d.]+)\s+(?:x|by)\s+([\d.]+)/i
     );
 
     if (m) {
-        const a = Number(m[1]);
-        const b = Number(m[2]);
 
-        return `Rectangle perimeter = ${fmt(2 * (a + b))}`;
+        const a =
+            Number(m[1]);
+
+        const b =
+            Number(m[2]);
+
+        return (
+            `Rectangle perimeter = ${fmt(
+                2 * (a + b)
+            )}`
+        );
     }
 
     m = text.match(
@@ -654,9 +796,14 @@ function geometry(text) {
     );
 
     if (m) {
-        return `Triangle area = ${fmt(
-            0.5 * Number(m[1]) * Number(m[2])
-        )}`;
+
+        return (
+            `Triangle area = ${fmt(
+                0.5 *
+                Number(m[1]) *
+                Number(m[2])
+            )}`
+        );
     }
 
     m = text.match(
@@ -664,11 +811,17 @@ function geometry(text) {
     );
 
     if (m) {
-        const r = Number(m[1]);
 
-        return `Sphere volume = ${fmt(
-            4 / 3 * Math.PI * r ** 3
-        )}`;
+        const r =
+            Number(m[1]);
+
+        return (
+            `Sphere volume = ${fmt(
+                4 / 3 *
+                Math.PI *
+                r ** 3
+            )}`
+        );
     }
 
     m = text.match(
@@ -676,237 +829,488 @@ function geometry(text) {
     );
 
     if (m) {
-        const r = Number(m[1]);
-        const h = Number(m[2]);
 
-        return `Cylinder volume = ${fmt(
-            Math.PI * r * r * h
-        )}`;
+        const r =
+            Number(m[1]);
+
+        const h =
+            Number(m[2]);
+
+        return (
+            `Cylinder volume = ${fmt(
+                Math.PI *
+                r *
+                r *
+                h
+            )}`
+        );
     }
 
     return null;
 }
 
 // ============================================================
-// ELECTRICAL / ELECTRONICS
+// ELECTRICAL
 // ============================================================
 
 function electrical(text) {
 
     let m;
 
-    // V = I R
+    // V = IR
     m = text.match(
-        /(?:voltage|volt|v)\s*(?:=|is)?\s*([\d.]+)\s*(?:amp|amps|a)\s*(?:and|with|x|\*)\s*([\d.]+)\s*(?:ohm|ohms|r)/i
+        /voltage\s+([\d.]+)\s*(?:amp|amps|a)\s*(?:x|\*|times)\s*([\d.]+)\s*(?:ohm|ohms|r)/i
     );
 
     if (m) {
-        const I = Number(m[1]);
-        const R = Number(m[2]);
 
-        return `Voltage V = ${fmt(I * R)} V`;
+        return (
+            `Voltage V = ${fmt(
+                Number(m[1]) *
+                Number(m[2])
+            )} V`
+        );
     }
 
+    // P = VI
     m = text.match(
-        /(?:current|amp|amps|i)\s*(?:=|is)?\s*([\d.]+)\s*(?:volt|volts|v)\s*(?:\/|divided by)\s*([\d.]+)\s*(?:ohm|ohms|r)/i
+        /power\s+([\d.]+)\s*(?:volt|volts|v)\s*(?:x|\*|times)\s*([\d.]+)\s*(?:amp|amps|a)/i
     );
 
     if (m) {
-        return `Current I = ${fmt(
-            Number(m[1]) / Number(m[2])
-        )} A`;
+
+        return (
+            `Power P = ${fmt(
+                Number(m[1]) *
+                Number(m[2])
+            )} W`
+        );
     }
 
+    // V / R = I
     m = text.match(
-        /(?:resistance|resistor|r)\s*(?:=|is)?\s*([\d.]+)\s*(?:volt|volts|v)\s*(?:\/|divided by)\s*([\d.]+)\s*(?:amp|amps|a)/i
+        /current\s+([\d.]+)\s*(?:volt|volts|v)\s*(?:\/|per)\s*([\d.]+)\s*(?:ohm|ohms|r)/i
     );
 
     if (m) {
-        return `Resistance R = ${fmt(
-            Number(m[1]) / Number(m[2])
-        )} Ω`;
+
+        return (
+            `Current I = ${fmt(
+                Number(m[1]) /
+                Number(m[2])
+            )} A`
+        );
     }
 
-    // Power
+    // V / I = R
     m = text.match(
-        /(?:power|watt|watts)\s*(?:=|is)?\s*([\d.]+)\s*(?:volt|volts|v)\s*(?:x|\*|times)\s*([\d.]+)\s*(?:amp|amps|a)/i
+        /resistance\s+([\d.]+)\s*(?:volt|volts|v)\s*(?:\/|per)\s*([\d.]+)\s*(?:amp|amps|a)/i
     );
 
     if (m) {
-        return `Power P = ${fmt(
-            Number(m[1]) * Number(m[2])
-        )} W`;
+
+        return (
+            `Resistance R = ${fmt(
+                Number(m[1]) /
+                Number(m[2])
+            )} Ω`
+        );
     }
 
-    // kWh
-    m = text.match(
-        /energy\s+([\d.]+)\s*(?:kw)\s*(?:for|x|times)\s*([\d.]+)\s*(?:hour|hours|h)/i
-    );
-
-    if (m) {
-        return `Energy = ${fmt(
-            Number(m[1]) * Number(m[2])
-        )} kWh`;
-    }
-
-    // Series resistance
+    // Series
     m = text.match(
         /series\s+resistance\s+(.+)/i
     );
 
     if (m) {
 
-        const nums = m[1]
-            .match(/[\d.]+/g)
-            ?.map(Number);
+        const nums =
+            m[1]
+                .match(/[\d.]+/g)
+                ?.map(Number);
 
         if (nums?.length) {
-            return `Series resistance = ${fmt(
-                nums.reduce((a, b) => a + b, 0)
-            )} Ω`;
+
+            return (
+                `Series resistance = ${fmt(
+                    nums.reduce(
+                        (a, b) => a + b,
+                        0
+                    )
+                )} Ω`
+            );
         }
     }
 
-    // Parallel resistance
+    // Parallel
     m = text.match(
         /parallel\s+resistance\s+(.+)/i
     );
 
     if (m) {
 
-        const nums = m[1]
-            .match(/[\d.]+/g)
-            ?.map(Number);
+        const nums =
+            m[1]
+                .match(/[\d.]+/g)
+                ?.map(Number);
 
         if (nums?.length) {
 
-            const inv = nums.reduce(
-                (sum, x) => sum + 1 / x,
-                0
-            );
+            const inverse =
+                nums.reduce(
+                    (sum, r) =>
+                        sum + 1 / r,
+                    0
+                );
 
-            return `Parallel resistance = ${fmt(1 / inv)} Ω`;
+            return (
+                `Parallel resistance = ${fmt(
+                    1 / inverse
+                )} Ω`
+            );
         }
+    }
+
+    // 3 phase power
+    m = text.match(
+        /3\s*phase\s+power\s+([\d.]+)\s*(?:v|volt|volts)\s+([\d.]+)\s*(?:a|amp|amps)\s+pf\s*([\d.]+)/i
+    );
+
+    if (m) {
+
+        const V =
+            Number(m[1]);
+
+        const I =
+            Number(m[2]);
+
+        const PF =
+            Number(m[3]);
+
+        return (
+            `3-Phase Power = ${fmt(
+                Math.sqrt(3) *
+                V *
+                I *
+                PF
+            )} W`
+        );
     }
 
     return null;
 }
 
 // ============================================================
-// PHYSICS
+// ELECTRONICS
+// ============================================================
+
+function electronics(text) {
+
+    let m;
+
+    // LED resistor
+    m = text.match(
+        /led\s+resistor\s+([\d.]+)\s*v\s+([\d.]+)\s*v\s+([\d.]+)\s*(?:ma|milliamp)/i
+    );
+
+    if (m) {
+
+        const supply =
+            Number(m[1]);
+
+        const led =
+            Number(m[2]);
+
+        const current =
+            Number(m[3]) / 1000;
+
+        if (current === 0) {
+            return null;
+        }
+
+        return (
+            `LED resistor = ${fmt(
+                (supply - led) /
+                current
+            )} Ω`
+        );
+    }
+
+    // Capacitor energy
+    m = text.match(
+        /capacitor\s+energy\s+([\d.]+)\s*(?:uf|µf)\s+([\d.]+)\s*v/i
+    );
+
+    if (m) {
+
+        const C =
+            Number(m[1]) * 1e-6;
+
+        const V =
+            Number(m[2]);
+
+        return (
+            `Capacitor energy = ${fmt(
+                0.5 * C * V * V
+            )} J`
+        );
+    }
+
+    // RC time constant
+    m = text.match(
+        /rc\s+time\s+constant\s+([\d.]+)\s*(?:ohm|r)\s+([\d.]+)\s*(?:uf|µf)/i
+    );
+
+    if (m) {
+
+        const R =
+            Number(m[1]);
+
+        const C =
+            Number(m[2]) * 1e-6;
+
+        return (
+            `RC time constant τ = ${fmt(
+                R * C
+            )} s`
+        );
+    }
+
+    return null;
+}
+
+// ============================================================
+// MECHANICAL / PHYSICS
 // ============================================================
 
 function physics(text) {
 
     let m;
 
-    // F = ma
+    // Force
     m = text.match(
-        /force\s+([\d.]+)\s*(?:kg|kilogram|mass)?\s*(?:x|\*|times)\s*([\d.]+)\s*(?:m\/s2|m\/s²|acceleration)/i
+        /force\s+([\d.]+)\s*kg\s*(?:x|\*|times)\s*([\d.]+)\s*(?:m\/s2|m\/s²)/i
     );
 
     if (m) {
-        return `Force F = ${fmt(
-            Number(m[1]) * Number(m[2])
-        )} N`;
+
+        return (
+            `Force F = ${fmt(
+                Number(m[1]) *
+                Number(m[2])
+            )} N`
+        );
     }
 
-    // weight
+    // Weight
     m = text.match(
         /weight\s+(?:of\s+)?([\d.]+)\s*(?:kg|kilogram)/i
     );
 
     if (m) {
-        return `Weight = ${fmt(
-            Number(m[1]) * 9.80665
-        )} N`;
+
+        return (
+            `Weight = ${fmt(
+                Number(m[1]) *
+                9.80665
+            )} N`
+        );
     }
 
-    // pressure
+    // Torque
     m = text.match(
-        /pressure\s+([\d.]+)\s*(?:n|newton)\s*(?:\/|per)\s*([\d.]+)\s*(?:m2|m²)/i
+        /torque\s+([\d.]+)\s*n\s*(?:x|\*|times)\s*([\d.]+)\s*m/i
     );
 
     if (m) {
-        return `Pressure = ${fmt(
-            Number(m[1]) / Number(m[2])
-        )} Pa`;
+
+        return (
+            `Torque = ${fmt(
+                Number(m[1]) *
+                Number(m[2])
+            )} N·m`
+        );
     }
 
-    // density
+    // RPM -> rad/s
     m = text.match(
-        /density\s+([\d.]+)\s*(?:kg)?\s*(?:\/|per)\s*([\d.]+)\s*(?:m3|m³)/i
+        /([\d.]+)\s*rpm\s*to\s*(?:rad\/s|radian)/i
     );
 
     if (m) {
-        return `Density = ${fmt(
-            Number(m[1]) / Number(m[2])
-        )} kg/m³`;
+
+        return (
+            `${fmt(
+                Number(m[1]) *
+                2 *
+                Math.PI /
+                60
+            )} rad/s`
+        );
     }
 
-    // speed
+    // Mechanical power
     m = text.match(
-        /speed\s+([\d.]+)\s*(?:km|kmh|km\/h)\s*(?:\/|per)\s*([\d.]+)\s*(?:hour|h)/i
+        /mechanical\s+power\s+([\d.]+)\s*n\s*m\s+([\d.]+)\s*rpm/i
     );
 
     if (m) {
-        return `Speed = ${fmt(
-            Number(m[1]) / Number(m[2])
-        )} km/h`;
+
+        const torque =
+            Number(m[1]);
+
+        const rpm =
+            Number(m[2]);
+
+        return (
+            `Mechanical Power = ${fmt(
+                torque *
+                rpm *
+                2 *
+                Math.PI /
+                60
+            )} W`
+        );
     }
 
-    // kinetic energy
+    // Work
     m = text.match(
-        /kinetic\s+energy\s+([\d.]+)\s*(?:kg)?\s*(?:x|\*)\s*([\d.]+)\s*(?:m\/s|velocity)/i
+        /work\s+([\d.]+)\s*n\s*(?:x|\*|times)\s*([\d.]+)\s*m/i
     );
 
     if (m) {
-        const mass = Number(m[1]);
-        const velocity = Number(m[2]);
 
-        return `Kinetic Energy = ${fmt(
-            0.5 * mass * velocity * velocity
-        )} J`;
+        return (
+            `Work = ${fmt(
+                Number(m[1]) *
+                Number(m[2])
+            )} J`
+        );
     }
 
-    // work
+    // Kinetic energy
     m = text.match(
-        /work\s+([\d.]+)\s*(?:n|newton)\s*(?:x|\*|times)\s*([\d.]+)\s*(?:m|meter)/i
+        /kinetic\s+energy\s+([\d.]+)\s*kg\s+([\d.]+)\s*m\/s/i
     );
 
     if (m) {
-        return `Work = ${fmt(
-            Number(m[1]) * Number(m[2])
-        )} J`;
+
+        const mass =
+            Number(m[1]);
+
+        const velocity =
+            Number(m[2]);
+
+        return (
+            `Kinetic Energy = ${fmt(
+                0.5 *
+                mass *
+                velocity *
+                velocity
+            )} J`
+        );
     }
 
-    // torque
+    // Pressure
     m = text.match(
-        /torque\s+([\d.]+)\s*(?:n|newton)\s*(?:x|\*|times)\s*([\d.]+)\s*(?:m|meter)/i
+        /pressure\s+([\d.]+)\s*n\s*(?:\/|per)\s*([\d.]+)\s*m2/i
     );
 
     if (m) {
-        return `Torque = ${fmt(
-            Number(m[1]) * Number(m[2])
-        )} N·m`;
+
+        return (
+            `Pressure = ${fmt(
+                Number(m[1]) /
+                Number(m[2])
+            )} Pa`
+        );
     }
 
     return null;
 }
 
 // ============================================================
-// UNIT CONVERSION
+// CIVIL ENGINEERING BASICS
 // ============================================================
 
-const UNIT_TABLE = {
+function civil(text) {
+
+    let m;
+
+    // Concrete volume
+    m = text.match(
+        /concrete\s+volume\s+([\d.]+)\s*m\s+([\d.]+)\s*m\s+([\d.]+)\s*m/i
+    );
+
+    if (m) {
+
+        return (
+            `Concrete volume = ${fmt(
+                Number(m[1]) *
+                Number(m[2]) *
+                Number(m[3])
+            )} m³`
+        );
+    }
+
+    // Rectangular slab
+    m = text.match(
+        /slab\s+volume\s+([\d.]+)\s*m\s+([\d.]+)\s*m\s+([\d.]+)\s*m/i
+    );
+
+    if (m) {
+
+        return (
+            `Slab volume = ${fmt(
+                Number(m[1]) *
+                Number(m[2]) *
+                Number(m[3])
+            )} m³`
+        );
+    }
+
+    // Steel weight
+    m = text.match(
+        /steel\s+weight\s+([\d.]+)\s*mm\s+([\d.]+)\s*m/i
+    );
+
+    if (m) {
+
+        const diameter =
+            Number(m[1]);
+
+        const length =
+            Number(m[2]);
+
+        const weight =
+            diameter *
+            diameter *
+            length /
+            162;
+
+        return (
+            `Approx steel weight = ${fmt(
+                weight
+            )} kg`
+        );
+    }
+
+    return null;
+}
+
+// ============================================================
+// UNIT CONVERTER
+// ============================================================
+
+const UNITS = {
 
     length: {
         mm: 0.001,
         cm: 0.01,
         m: 1,
         km: 1000,
-        inch: 0.0254,
         in: 0.0254,
+        inch: 0.0254,
         ft: 0.3048,
         yard: 0.9144,
         mile: 1609.344
@@ -955,59 +1359,79 @@ const UNIT_TABLE = {
 
 function conversion(text) {
 
-    let m = text.match(
-        /(-?\d+(?:\.\d+)?)\s*([a-zA-Z/]+)\s*(?:to|in)\s*([a-zA-Z/]+)/i
-    );
+    const m =
+        text.match(
+            /(-?\d+(?:\.\d+)?)\s*([a-zA-Z/]+)\s*(?:to|in)\s*([a-zA-Z/]+)/i
+        );
 
     if (!m) return null;
 
-    const value = Number(m[1]);
+    const value =
+        Number(m[1]);
 
-    let from = m[2].toLowerCase();
-    let to = m[3].toLowerCase();
+    const from =
+        m[2].toLowerCase();
 
-    // temperature
+    const to =
+        m[3].toLowerCase();
+
+    // Celsius/Fahrenheit/Kelvin
+
     if (
         ["c", "celsius"].includes(from) &&
         ["f", "fahrenheit"].includes(to)
     ) {
-        return `${fmt(value * 9 / 5 + 32)} °F`;
+        return (
+            `${fmt(value * 9 / 5 + 32)} °F`
+        );
     }
 
     if (
         ["f", "fahrenheit"].includes(from) &&
         ["c", "celsius"].includes(to)
     ) {
-        return `${fmt((value - 32) * 5 / 9)} °C`;
+        return (
+            `${fmt((value - 32) * 5 / 9)} °C`
+        );
     }
 
     if (
         ["c", "celsius"].includes(from) &&
         ["k", "kelvin"].includes(to)
     ) {
-        return `${fmt(value + 273.15)} K`;
+        return (
+            `${fmt(value + 273.15)} K`
+        );
     }
 
     if (
         ["k", "kelvin"].includes(from) &&
         ["c", "celsius"].includes(to)
     ) {
-        return `${fmt(value - 273.15)} °C`;
+        return (
+            `${fmt(value - 273.15)} °C`
+        );
     }
 
-    for (const category of Object.keys(UNIT_TABLE)) {
+    for (const category of Object.keys(UNITS)) {
 
-        const table = UNIT_TABLE[category];
+        const table =
+            UNITS[category];
 
         if (
-            Object.prototype.hasOwnProperty.call(table, from) &&
-            Object.prototype.hasOwnProperty.call(table, to)
+            Object.hasOwn(table, from) &&
+            Object.hasOwn(table, to)
         ) {
 
-            const base = value * table[from];
-            const result = base / table[to];
+            const base =
+                value * table[from];
 
-            return `${fmt(result)} ${to}`;
+            const result =
+                base / table[to];
+
+            return (
+                `${fmt(result)} ${to}`
+            );
         }
     }
 
@@ -1015,200 +1439,220 @@ function conversion(text) {
 }
 
 // ============================================================
-// INTEREST / FINANCE MATH
-// ============================================================
-
-function finance(text) {
-
-    let m;
-
-    // SI = PRT / 100
-    m = text.match(
-        /simple\s+interest\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)/i
-    );
-
-    if (m) {
-
-        const P = Number(m[1]);
-        const R = Number(m[2]);
-        const T = Number(m[3]);
-
-        const SI = P * R * T / 100;
-
-        return `Simple Interest = ${fmt(SI)}\nAmount = ${fmt(P + SI)}`;
-    }
-
-    // compound
-    m = text.match(
-        /compound\s+interest\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)/i
-    );
-
-    if (m) {
-
-        const P = Number(m[1]);
-        const R = Number(m[2]);
-        const T = Number(m[3]);
-
-        const A = P * Math.pow(1 + R / 100, T);
-
-        return `Compound Amount = ${fmt(A)}\nInterest = ${fmt(A - P)}`;
-    }
-
-    return null;
-}
-
-// ============================================================
-// COMMAND PROCESSOR
+// COMMAND ROUTER
 // ============================================================
 
 function processCommand(rawCommand) {
 
-    const command = rawCommand.trim();
-    const c = command.toLowerCase();
+    const command =
+        rawCommand.trim();
 
-    // ---------------- GREETING ----------------
+    const c =
+        command.toLowerCase();
+
+    // GREETING
 
     if (
-        /^(hello|hi|hey|vanakkam|வணக்கம்)(\s+rolex)?$/i.test(command)
+        /^(hello|hi|hey|vanakkam|வணக்கம்)(\s+rolex)?$/i
+            .test(command)
     ) {
-        return "Vanakkam Boss. Rolex AI is online.";
+        return (
+            "Vanakkam Boss. " +
+            "Rolex AI is online."
+        );
     }
 
-    // ---------------- STATUS ----------------
+    // STATUS
 
     if (
         c === "status" ||
         c === "system" ||
         c.includes("system status")
     ) {
-        return "ROLEX CORE: ONLINE\nLOCAL BRAIN: READY\nMEMORY: READY\nVOICE: STANDBY\nEXTERNAL AI: DISCONNECTED";
+
+        return (
+            "ROLEX CORE: ONLINE\n" +
+            "LOCAL BRAIN: READY\n" +
+            "MATH ENGINE: READY\n" +
+            "ENGINEERING: READY\n" +
+            "MEMORY: READY\n" +
+            "VOICE: STANDBY\n" +
+            "EXTERNAL AI: OFF"
+        );
     }
 
-    // ---------------- IDENTITY ----------------
+    // IDENTITY
 
     if (
         c.includes("who are you") ||
         c.includes("what are you") ||
         c.includes("nee yaar")
     ) {
-        return "I am Rolex AI, your personal local intelligence system.";
+        return (
+            "I am Rolex AI, " +
+            "your personal local intelligence system."
+        );
     }
 
-    // ---------------- ONLINE ----------------
+    // HELP
 
     if (
-        c === "online" ||
-        c.includes("are you online")
+        c === "help" ||
+        c === "/help"
     ) {
-        return "Yes Boss. Rolex AI is online and running locally.";
+
+        return (
+`ROLEX LOCAL BRAIN v3
+
+MATH
+25*4
+sqrt(144)
+2^10
+sin(30)
+average 10 20 30
+25% of 800
+5 factorial
+
+EQUATIONS
+2x+5=15
+x^2+5x+6=0
+
+GEOMETRY
+area of circle radius 5
+rectangle area 10 x 20
+sphere volume 5
+
+ELECTRICAL
+voltage 2 amp x 10 ohm
+power 230 volt x 5 amp
+series resistance 10 20 30
+parallel resistance 10 20
+
+ELECTRONICS
+led resistor 12v 2v 20ma
+capacitor energy 100uf 12v
+rc time constant 1000 ohm 100uf
+
+MECHANICAL / PHYSICS
+force 10kg x 5m/s2
+weight 50kg
+torque 20N x 3m
+1000rpm to rad/s
+
+CIVIL
+concrete volume 5m 4m 0.15m
+steel weight 12mm 10m
+
+CONVERSION
+10 km to m
+100 c to f
+1 kwh to j
+
+MEMORY
+remember my name is Boss
+what is my name
+memory
+clear memory`
+        );
     }
 
-    // ---------------- HELP ----------------
-
-    if (c === "help" || c === "/help") {
-
-        return `ROLEX LOCAL COMMANDS:
-
-Math:
-• 25*4
-• sqrt(144)
-• 2^10
-• sin(30)
-• average 10 20 30
-• 25% of 800
-
-Equations:
-• 2x+5=15
-• x^2+5x+6=0
-
-Geometry:
-• area of circle radius 5
-• rectangle area 10 x 20
-• sphere volume 5
-
-Engineering:
-• voltage 2 amp x 10 ohm
-• power 230 volt x 5 amp
-• force 10 kg x 5 m/s2
-• torque 20 newton x 3 meter
-
-Conversion:
-• 10 km to m
-• 100 c to f
-• 1 kwh to j
-
-Memory:
-• remember my name is Boss
-• what is my name
-• memory
-• clear memory`;
-    }
-
-    // ---------------- TIME ----------------
+    // TIME
 
     if (
         c === "time" ||
         c.includes("what time") ||
-        c.includes("current time") ||
-        c.includes("neram")
+        c.includes("current time")
     ) {
-        return "Local time: " +
-            new Date().toLocaleTimeString([], {
-                hour: "2-digit",
-                minute: "2-digit",
-                second: "2-digit"
-            });
+
+        return (
+            "Local time: " +
+            new Date().toLocaleTimeString(
+                [],
+                {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    second: "2-digit"
+                }
+            )
+        );
     }
 
-    // ---------------- DATE ----------------
+    // DATE
 
     if (
         c === "date" ||
         c.includes("what date") ||
-        c.includes("today") ||
-        c.includes("indha naal")
+        c.includes("today")
     ) {
-        return "Today is " +
-            new Date().toLocaleDateString([], {
-                weekday: "long",
-                year: "numeric",
-                month: "long",
-                day: "numeric"
-            });
+
+        return (
+            "Today is " +
+            new Date().toLocaleDateString(
+                [],
+                {
+                    weekday: "long",
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric"
+                }
+            )
+        );
     }
 
-    // ========================================================
-    // MEMORY
-    // ========================================================
+    // MEMORY SAVE
 
     if (
         c.startsWith("remember ") ||
         c.startsWith("remember that ")
     ) {
 
-        let text = command
-            .replace(/^remember that /i, "")
-            .replace(/^remember /i, "")
-            .trim();
+        const text =
+            command
+                .replace(
+                    /^remember that /i,
+                    ""
+                )
+                .replace(
+                    /^remember /i,
+                    ""
+                )
+                .trim();
 
-        const match = text.match(
-            /^my (.+?) is (.+)$/i
-        );
+        const match =
+            text.match(
+                /^my (.+?) is (.+)$/i
+            );
 
         if (match) {
 
-            const key = match[1].trim();
-            const value = match[2].trim();
+            const key =
+                match[1].trim();
 
-            saveMemory(key, value);
+            const value =
+                match[2].trim();
 
-            return `Okay Boss. I will remember that your ${key} is ${value}.`;
+            saveMemory(
+                key,
+                value
+            );
+
+            return (
+                `Okay Boss. I will remember ` +
+                `that your ${key} is ${value}.`
+            );
         }
 
-        saveMemory("note", text);
+        saveMemory(
+            "note",
+            text
+        );
 
-        return "Memory saved locally.";
+        return (
+            "Memory saved locally."
+        );
     }
+
+    // MEMORY RECALL
 
     if (
         c.includes("what is my") ||
@@ -1217,33 +1661,58 @@ Memory:
         c === "memories"
     ) {
 
-        const match = command.match(
-            /what is my (.+?)[?]*$/i
-        );
+        const match =
+            command.match(
+                /what is my (.+?)[?]*$/i
+            );
 
         if (match) {
 
-            const key = match[1].trim().toLowerCase();
+            const key =
+                match[1]
+                    .trim()
+                    .toLowerCase();
 
-            if (memory[key]) {
-                return `Your ${key} is ${memory[key]}.`;
+            if (
+                Object.hasOwn(
+                    memory,
+                    key
+                )
+            ) {
+
+                return (
+                    `Your ${key} is ` +
+                    `${memory[key]}.`
+                );
             }
 
-            return `I don't have a saved memory for your ${key}.`;
+            return (
+                `I don't have a saved ` +
+                `memory for your ${key}.`
+            );
         }
 
-        const keys = Object.keys(memory);
+        const keys =
+            Object.keys(memory);
 
         if (!keys.length) {
-            return "Local memory is currently empty.";
+            return (
+                "Local memory is empty."
+            );
         }
 
-        return "Local memories:\n" +
+        return (
+            "Local memories:\n" +
             keys
-                .map(k => `${k} = ${memory[k]}`)
-                .join("\n");
+                .map(
+                    k =>
+                        `${k} = ${memory[k]}`
+                )
+                .join("\n")
+        );
     }
 
+    // CLEAR MEMORY
     if (
         c === "clear memory" ||
         c === "forget everything" ||
@@ -1252,146 +1721,220 @@ Memory:
 
         clearMemory();
 
-        return "Local Rolex memory has been cleared.";
+        return (
+            "Local Rolex memory has been cleared."
+        );
     }
 
-    // ========================================================
-    // EQUATIONS
-    // ========================================================
+    // FACTORIAL
 
-    const quadratic = solveQuadratic(command);
+    let factorialMatch =
+        command.match(
+            /(?:factorial|fact)\s+(\d+)/i
+        );
+
+    if (factorialMatch) {
+
+        const n =
+            Number(factorialMatch[1]);
+
+        const result =
+            factorial(n);
+
+        if (result !== null) {
+
+            return (
+                `${n}! = ${result}`
+            );
+        }
+    }
+
+    // EQUATIONS
+
+    const quadratic =
+        solveQuadratic(command);
 
     if (quadratic) {
-        return `Quadratic solution: ${quadratic}`;
+        return (
+            `Quadratic solution: ${quadratic}`
+        );
     }
 
-    const linear = solveLinearEquation(command);
+    const linear =
+        solveLinear(command);
 
     if (linear) {
-        return `Equation solution: ${linear}`;
+        return (
+            `Equation solution: ${linear}`
+        );
     }
 
-    // ========================================================
-    // SPECIAL CALCULATIONS
-    // ========================================================
+    // PERCENTAGE
 
-    const percent = percentageOf(command);
+    const percent =
+        percentage(command);
 
     if (percent !== null) {
-        return `Percentage result: ${fmt(percent)}`;
+
+        return (
+            `Percentage result: ${fmt(percent)}`
+        );
     }
 
-    const change = percentageChange(command);
+    // AVERAGE
 
-    if (change !== null) {
-        return `Percentage change: ${fmt(change)}%`;
-    }
-
-    const avg = average(command);
+    const avg =
+        average(command);
 
     if (avg !== null) {
-        return `Average = ${fmt(avg)}`;
+
+        return (
+            `Average = ${fmt(avg)}`
+        );
     }
 
-    // ========================================================
     // GEOMETRY
-    // ========================================================
 
-    const geo = geometry(command);
+    const geo =
+        geometry(command);
 
     if (geo) return geo;
 
-    // ========================================================
     // ELECTRICAL
-    // ========================================================
 
-    const elec = electrical(command);
+    const elec =
+        electrical(command);
 
     if (elec) return elec;
 
-    // ========================================================
-    // PHYSICS
-    // ========================================================
+    // ELECTRONICS
 
-    const phys = physics(command);
+    const electronic =
+        electronics(command);
+
+    if (electronic) {
+        return electronic;
+    }
+
+    // PHYSICS
+
+    const phys =
+        physics(command);
 
     if (phys) return phys;
 
-    // ========================================================
-    // FINANCE
-    // ========================================================
+    // CIVIL
 
-    const fin = finance(command);
+    const civilResult =
+        civil(command);
 
-    if (fin) return fin;
-
-    // ========================================================
-    // UNIT CONVERSION
-    // ========================================================
-    
-    const converted = conversion(command);
-    if (converted) {
-        return `Conversion result: ${converted}`;
+    if (civilResult) {
+        return civilResult;
     }
 
-    // ========================================================
-    // SQRT NATURAL COMMAND
-    // ========================================================
+    // CONVERSION
 
-    let sqrtMatch = command.match(
-        /(?:square root|sqrt)\s+(?:of\s+)?([\d.]+)/i
-    );
+    const converted =
+        conversion(command);
+
+    if (converted) {
+
+        return (
+            `Conversion result: ${converted}`
+        );
+    }
+
+    // SQRT NATURAL
+
+    const sqrtMatch =
+        command.match(
+            /(?:square root|sqrt)\s+(?:of\s+)?([\d.]+)/i
+        );
 
     if (sqrtMatch) {
 
-        return `√${sqrtMatch[1]} = ${fmt(
-            Math.sqrt(Number(sqrtMatch[1]))
-        )}`;
+        return (
+            `√${sqrtMatch[1]} = ${fmt(
+                Math.sqrt(
+                    Number(sqrtMatch[1])
+                )
+            )}`
+        );
     }
 
-    // ========================================================
     // NORMAL MATH
-    // ========================================================
 
-    let expression = command
-        .replace(/^what is\s+/i, "")
-        .replace(/^calculate\s+/i, "")
-        .replace(/^calc\s+/i, "")
-        .replace(/^answer\s+/i, "")
-        .replace(/^solve\s+/i, "")
-        .replace(/\?/g, "")
-        .trim();
+    let expression =
+        command
+            .replace(
+                /^what is\s+/i,
+                ""
+            )
+            .replace(
+                /^calculate\s+/i,
+                ""
+            )
+            .replace(
+                /^calc\s+/i,
+                ""
+            )
+            .replace(
+                /^answer\s+/i,
+                ""
+            )
+            .replace(
+                /^solve\s+/i,
+                ""
+            )
+            .replace(
+                /\?/g,
+                ""
+            )
+            .trim();
 
-    // Degree mode
     const degrees =
-        /\bdegrees?\b|\bdeg\b/i.test(expression);
+        /\bdegrees?\b|\bdeg\b/i
+            .test(expression);
 
-    expression = expression
-        .replace(/\bdegrees?\b/gi, "")
-        .replace(/\bdeg\b/gi, "")
-        .trim();
+    expression =
+        expression
+            .replace(
+                /\bdegrees?\b/gi,
+                ""
+            )
+            .replace(
+                /\bdeg\b/gi,
+                ""
+            )
+            .trim();
 
     try {
 
         if (
-            /^[0-9a-zA-Zπ+\-*/%^().,\s×÷−]+$/i.test(expression)
+            /^[0-9a-zA-Zπ+\-*/%^().,\s×÷−]+$/i
+                .test(expression)
         ) {
 
             const result =
-                evaluateExpression(expression, degrees);
+                evaluateExpression(
+                    expression,
+                    degrees
+                );
 
-            return `Calculation result: ${fmt(result)}`;
+            return (
+                `Calculation result: ${fmt(result)}`
+            );
         }
 
-    } catch (_) {
-        // Not a normal math expression.
-    }
+    } catch (_) {}
 
-    // ========================================================
     // DEFAULT
-    // ========================================================
 
-    return "I can process this locally, Boss, but that command is not yet in my formula library. No external AI is connected.";
+    return (
+        "I understood the command locally, Boss. " +
+        "That formula is not yet in my library. " +
+        "No external AI is connected."
+    );
 }
 
 // ============================================================
@@ -1402,22 +1945,33 @@ function sendCommand() {
 
     if (!input) return;
 
-    const command = input.value.trim();
+    const command =
+        input.value.trim();
 
     if (!command) return;
 
-    addMessage("YOU", command);
+    addMessage(
+        "YOU",
+        command
+    );
 
     input.value = "";
 
-    const reply = processCommand(command);
+    const reply =
+        processCommand(command);
 
     setTimeout(() => {
-        addMessage("ROLEX", reply);
+
+        addMessage(
+            "ROLEX",
+            reply
+        );
+
     }, 180);
 }
 
 if (sendButton) {
+
     sendButton.addEventListener(
         "click",
         sendCommand
@@ -1428,7 +1982,7 @@ if (input) {
 
     input.addEventListener(
         "keydown",
-        function(event) {
+        event => {
 
             if (event.key === "Enter") {
 
@@ -1452,74 +2006,84 @@ const SpeechRecognition =
 
 if (SpeechRecognition) {
 
-    recognition = new SpeechRecognition();
+    recognition =
+        new SpeechRecognition();
 
-    recognition.lang = "en-IN";
-    recognition.continuous = false;
-    recognition.interimResults = false;
+    recognition.lang =
+        "en-IN";
 
-    recognition.onstart = function() {
+    recognition.continuous =
+        false;
 
-        if (voiceButton) {
+    recognition.interimResults =
+        false;
 
-            voiceButton.innerHTML =
-                "<span>●</span> LISTENING";
+    recognition.onstart =
+        function () {
 
-            voiceButton.classList.add(
-                "listening"
-            );
-        }
-    };
+            if (voiceButton) {
 
-    recognition.onresult = function(event) {
+                voiceButton.innerHTML =
+                    "<span>●</span> LISTENING";
 
-        const spokenText =
-            event.results[0][0].transcript;
+                voiceButton.classList.add(
+                    "listening"
+                );
+            }
+        };
 
-        if (input) {
-            input.value = spokenText;
-        }
+    recognition.onresult =
+        function (event) {
 
-        sendCommand();
-    };
+            const spokenText =
+                event.results[0][0]
+                    .transcript;
 
-    recognition.onerror = function() {
+            if (input) {
+                input.value =
+                    spokenText;
+            }
 
-        if (voiceButton) {
+            sendCommand();
+        };
 
-            voiceButton.innerHTML =
-                "<span>●</span> VOICE";
+    recognition.onerror =
+        function () {
 
-            voiceButton.classList.remove(
-                "listening"
-            );
-        }
-    };
+            if (voiceButton) {
 
-    recognition.onend = function() {
+                voiceButton.innerHTML =
+                    "<span>●</span> VOICE";
 
-        if (voiceButton) {
+                voiceButton.classList.remove(
+                    "listening"
+                );
+            }
+        };
 
-            voiceButton.innerHTML =
-                "<span>●</span> VOICE";
+    recognition.onend =
+        function () {
 
-            voiceButton.classList.remove(
-                "listening"
-            );
-        }
-    };
+            if (voiceButton) {
+
+                voiceButton.innerHTML =
+                    "<span>●</span> VOICE";
+
+                voiceButton.classList.remove(
+                    "listening"
+                );
+            }
+        };
 
     if (voiceButton) {
 
         voiceButton.addEventListener(
             "click",
-            function() {
+            function () {
 
                 try {
                     recognition.start();
-                } catch (_) {
-                    // Prevent duplicate start
-                }
+                } catch (_) {}
             }
         );
     }
@@ -1530,7 +2094,7 @@ if (SpeechRecognition) {
 
         voiceButton.addEventListener(
             "click",
-            function() {
+            function () {
 
                 addMessage(
                     "ROLEX",
@@ -1556,7 +2120,7 @@ function startup() {
 
         addMessage(
             "ROLEX",
-            "Universal Local Brain online. No external AI connected."
+            "Local Brain v3 online. No external AI connected."
         );
 
     }, 400);
