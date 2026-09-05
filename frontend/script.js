@@ -61,25 +61,69 @@ function clearMemory() {
 
 function calculate(expression) {
 
-    let exp = expression
-        .toLowerCase()
-        .replaceAll("what is", "")
-        .replaceAll("calculate", "")
-        .replaceAll("calc", "")
-        .replaceAll("plus", "+")
-        .replaceAll("minus", "-")
-        .replaceAll("times", "*")
-        .replaceAll("multiplied by", "*")
-        .replaceAll("divided by", "/")
-        .replaceAll("into", "*")
-        .replaceAll("x", "*")
-        .replaceAll("%", "%")
+    let exp = expression.toLowerCase().trim();
+
+    // Remove common calculation phrases
+    exp = exp
+        .replace(/^what is\s+/i, "")
+        .replace(/^calculate\s+/i, "")
+        .replace(/^calc\s+/i, "")
+        .replace(/^answer\s+/i, "")
+        .replace(/^solve\s+/i, "");
+
+    // Natural language operators
+    exp = exp
+        .replace(/multiplied by/g, "*")
+        .replace(/multiply by/g, "*")
+        .replace(/divided by/g, "/")
+        .replace(/divide by/g, "/")
+        .replace(/plus/g, "+")
+        .replace(/minus/g, "-")
+        .replace(/times/g, "*")
+        .replace(/\binto\b/g, "*")
+        .replace(/\bx\b/g, "*");
+
+    // Tamil/Tanglish operators
+    exp = exp
+        .replace(/கூட்டல்/g, "+")
+        .replace(/கழித்தல்/g, "-")
+        .replace(/பெருக்கல்/g, "*")
+        .replace(/வகுத்தல்/g, "/")
+        .replace(/கூட்டு/g, "+")
+        .replace(/கழி/g, "-")
+        .replace(/பெருக்கு/g, "*")
+        .replace(/வகுக்கு/g, "/");
+
+    // Remove question marks and unnecessary spaces
+    exp = exp
+        .replace(/\?/g, "")
         .trim();
 
-    // Allow only calculator characters
-    if (!/^[0-9+\-*/%.() \t]+$/.test(exp)) {
+    // Only allow mathematical characters
+    if (!/^[0-9+\-*/%.()\s]+$/.test(exp)) {
         return null;
     }
+
+    try {
+
+        const result = Function(
+            `"use strict"; return (${exp})`
+        )();
+
+        if (
+            typeof result !== "number" ||
+            !Number.isFinite(result)
+        ) {
+            return null;
+        }
+
+        return result;
+
+    } catch {
+
+        return null;
+    }
+}
 
     try {
         const result = Function(`"use strict"; return (${exp})`)();
