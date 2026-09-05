@@ -95,4 +95,4 @@ function startup() {
     }, 500);
 }
 
-window.addEventListener("load", startup);
+startup();
