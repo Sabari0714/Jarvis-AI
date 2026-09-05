@@ -2,63 +2,118 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>J.A.R.V.I.S</title>
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#05080c">
+
+    <title>ROLEX AI</title>
+
     <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
 
-    <header>
-        <h1>J.A.R.V.I.S</h1>
-        <p>MOBILE EDITION</p>
-    </header>
+    <main class="app">
 
-    <div class="core">
-        <div class="ring r1"></div>
-        <div class="ring r2"></div>
-        <div class="center"></div>
-    </div>
+        <header class="topbar">
+            <div>
+                <h1>ROLEX AI</h1>
+                <span>PERSONAL INTELLIGENCE</span>
+            </div>
 
-    <p class="core-text">CORE ACTIVE</p>
+            <div class="system-dot">
+                <i></i>
+                ONLINE
+            </div>
+        </header>
 
-    <div class="status">
-        <h2>SYSTEM STATUS</h2>
 
-        <div class="row">
-            <span>AI CORE</span>
-            <b class="on">● ONLINE</b>
-        </div>
+        <section class="core-section">
 
-        <div class="row">
-            <span>NETWORK</span>
-            <b class="on">● ONLINE</b>
-        </div>
+            <div class="core">
+                <div class="orbit orbit-one"></div>
+                <div class="orbit orbit-two"></div>
+                <div class="orbit orbit-three"></div>
 
-        <div class="row">
-            <span>VOICE</span>
-            <b class="off">○ LOCKED</b>
-        </div>
+                <div class="core-center">
+                    <strong>RX</strong>
+                    <small>CORE</small>
+                </div>
+            </div>
 
-        <div class="row">
-            <span>MEMORY</span>
-            <b class="off">○ LOCKED</b>
-        </div>
-    </div>
+            <div class="core-status">
+                SYSTEM CORE ACTIVE
+            </div>
 
-    <div class="chat" id="chat"></div>
+        </section>
 
-    <div class="input-area">
-        <input
-            id="msg"
-            type="text"
-            placeholder="Ask J.A.R.V.I.S..."
-        >
 
-        <button id="send">SEND</button>
-    </div>
+        <section class="status-panel">
+
+            <div class="status-card">
+                <span>CORE</span>
+                <b class="online">ONLINE</b>
+            </div>
+
+            <div class="status-card">
+                <span>NETWORK</span>
+                <b class="online">ONLINE</b>
+            </div>
+
+            <div class="status-card">
+                <span>MEMORY</span>
+                <b class="ready">READY</b>
+            </div>
+
+            <div class="status-card">
+                <span>VOICE</span>
+                <b class="locked">STANDBY</b>
+            </div>
+
+        </section>
+
+
+        <section class="terminal">
+
+            <div class="terminal-head">
+                <span>ROLEX TERMINAL</span>
+                <span>LOCAL MODE</span>
+            </div>
+
+            <div class="chat" id="chat"></div>
+
+        </section>
+
+
+        <section class="command-area">
+
+            <input
+                id="msg"
+                type="text"
+                autocomplete="off"
+                placeholder="Ask Rolex..."
+            >
+
+            <button id="send">
+                SEND
+            </button>
+
+        </section>
+
+
+        <button class="voice-button" id="voiceButton">
+            <span>●</span>
+            VOICE
+        </button>
+
+
+        <footer>
+            ROLEX AI MOBILE EDITION
+        </footer>
+
+    </main>
 
     <script src="script.js"></script>
 
 </body>
-          </html>
+    </html>
