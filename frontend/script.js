@@ -21,11 +21,11 @@ function sendMessage() {
 
     const reply = processCommand(text);
 
-    addMessage("J.A.R.V.I.S: Processing...", "ai");
+    addMessage("ROLEX: Processing...", "ai");
 
     setTimeout(() => {
         chat.lastElementChild.innerText =
-            "J.A.R.V.I.S: " + reply;
+            "ROLEX: " + reply;
     }, 400);
 }
 
@@ -35,7 +35,7 @@ function processCommand(text) {
     if (
         command === "hi" ||
         command === "hello" ||
-        command === "hey jarvis"
+        command === "hey rolex"
     ) {
         return "Hello, Boss. Systems are ready.";
     }
@@ -81,13 +81,13 @@ function startup() {
     const date = now.toLocaleDateString();
 
     addMessage(
-        "J.A.R.V.I.S: Systems initialized, Boss.",
+        "ROLEX: Systems initialized, Boss.",
         "ai"
     );
 
     setTimeout(() => {
         addMessage(
-            "J.A.R.V.I.S: " +
+            "ROLEX: " +
             "Local time: " + time +
             " | Date: " + date,
             "ai"
