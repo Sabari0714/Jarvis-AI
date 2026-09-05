@@ -873,19 +873,19 @@ function electrical(text) {
     }
 
     // P = VI
-    m = text.match(
-        /power\s+([\d.]+)\s*(?:volt|volts|v)\s*(?:x|\*|times)\s*([\d.]+)\s*(?:amp|amps|a)/i
+m = text.match(
+    /(?:power\s+)?([\d.]+)\s*(?:volt|volts|v)\s*(?:x|\*|×|times)\s*([\d.]+)\s*(?:amp|amps|a)/i
+);
+
+if (m) {
+
+    const V = Number(m[1]);
+    const I = Number(m[2]);
+
+    return (
+        `Power P = ${fmt(V * I)} W`
     );
-
-    if (m) {
-
-        return (
-            `Power P = ${fmt(
-                Number(m[1]) *
-                Number(m[2])
-            )} W`
-        );
-    }
+}
 
     // V / R = I
     m = text.match(
