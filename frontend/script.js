@@ -1,81 +1,334 @@
+// ==========================================
+// ROLEX AI — LOCAL BRAIN v1
+// No API • No Gemini • No OpenAI
+// ==========================================
+
 const chat = document.getElementById("chat");
 const input = document.getElementById("msg");
 const sendButton = document.getElementById("send");
 const voiceButton = document.getElementById("voiceButton");
 
+let memory = JSON.parse(localStorage.getItem("rolex_memory") || "{}");
+
+// ------------------------------------------
+// CHAT
+// ------------------------------------------
+
 function addMessage(sender, text) {
-    const message = document.createElement("div");
-    message.className = "message";
-    message.innerHTML = `<span>${sender}:</span> ${text}`;
-    chat.appendChild(message);
+    const row = document.createElement("div");
+
+    row.className = sender === "YOU"
+        ? "message user-message"
+        : "message rolex-message";
+
+    row.innerHTML = `
+        <strong>${sender}</strong>
+        <span>${escapeHTML(text)}</span>
+    `;
+
+    chat.appendChild(row);
     chat.scrollTop = chat.scrollHeight;
 }
 
-function getTime() {
-    return new Date().toLocaleTimeString("en-IN", {
-        hour: "2-digit",
-        minute: "2-digit"
-    });
+function escapeHTML(text) {
+    return String(text)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
 }
 
-function getDate() {
-    return new Date().toLocaleDateString("en-IN");
+
+// ------------------------------------------
+// LOCAL MEMORY
+// ------------------------------------------
+
+function saveMemory(key, value) {
+    memory[key] = value;
+    localStorage.setItem("rolex_memory", JSON.stringify(memory));
 }
 
-function processCommand(command) {
-    const cmd = command.toLowerCase().trim();
-
-    if (cmd === "hello" || cmd === "hi" || cmd.includes("hello rolex")) {
-        return "Hello Boss. Rolex AI is ready.";
-    }
-
-    if (cmd.includes("status")) {
-        return "All Rolex AI local systems are operational.";
-    }
-
-    if (cmd === "time" || cmd.includes("what time")) {
-        return `Current time is ${getTime()}.`;
-    }
-
-    if (cmd === "date" || cmd.includes("today")) {
-        return `Today's date is ${getDate()}.`;
-    }
-
-    if (cmd === "help") {
-        return "Available commands: Hello, Status, Time, Date and Help.";
-    }
-
-    if (cmd.includes("who are you")) {
-        return "I am Rolex AI, your personal local intelligence interface.";
-    }
-
-    return "Command received, Boss. Rolex AI is running in local demo mode.";
+function clearMemory() {
+    memory = {};
+    localStorage.removeItem("rolex_memory");
 }
+
+
+// ------------------------------------------
+// CALCULATOR
+// ------------------------------------------
+
+function calculate(expression) {
+
+    let exp = expression
+        .toLowerCase()
+        .replaceAll("what is", "")
+        .replaceAll("calculate", "")
+        .replaceAll("calc", "")
+        .replaceAll("plus", "+")
+        .replaceAll("minus", "-")
+        .replaceAll("times", "*")
+        .replaceAll("multiplied by", "*")
+        .replaceAll("divided by", "/")
+        .replaceAll("into", "*")
+        .replaceAll("x", "*")
+        .replaceAll("%", "%")
+        .trim();
+
+    // Allow only calculator characters
+    if (!/^[0-9+\-*/%.() \t]+$/.test(exp)) {
+        return null;
+    }
+
+    try {
+        const result = Function(`"use strict"; return (${exp})`)();
+
+        if (typeof result !== "number" || !Number.isFinite(result)) {
+            return null;
+        }
+
+        return result;
+    } catch {
+        return null;
+    }
+}
+
+
+// ------------------------------------------
+// COMMAND PROCESSOR
+// ------------------------------------------
+
+function processCommand(rawCommand) {
+
+    const command = rawCommand.trim();
+    const c = command.toLowerCase();
+
+    // ---------------- HELLO ----------------
+
+    if (
+        c === "hello" ||
+        c === "hi" ||
+        c === "hey" ||
+        c === "hey rolex" ||
+        c === "hello rolex"
+    ) {
+        return "Hello Boss. Rolex AI is online.";
+    }
+
+
+    // ---------------- STATUS ----------------
+
+    if (
+        c.includes("system status") ||
+        c === "status" ||
+        c === "system"
+    ) {
+        return "All local systems are operational. Core online. Memory ready. Voice standby.";
+    }
+
+
+    // ---------------- WHO ARE YOU ----------------
+
+    if (
+        c.includes("who are you") ||
+        c.includes("what are you")
+    ) {
+        return "I am Rolex AI, your personal intelligence system.";
+    }
+
+
+    // ---------------- ONLINE ----------------
+
+    if (
+        c === "online" ||
+        c.includes("are you online")
+    ) {
+        return "Yes Boss. Rolex AI is online and running in local mode.";
+    }
+
+
+    // ---------------- HELP ----------------
+
+    if (c === "help" || c === "/help") {
+        return "Try: hello, status, time, date, calculate 25*4, remember my name is Boss, what is my name, memory, or clear memory.";
+    }
+
+
+    // ---------------- TIME ----------------
+
+    if (
+        c === "time" ||
+        c.includes("what time") ||
+        c.includes("current time")
+    ) {
+        return "Local time: " +
+            new Date().toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit"
+            });
+    }
+
+
+    // ---------------- DATE ----------------
+
+    if (
+        c === "date" ||
+        c.includes("today") ||
+        c.includes("what date")
+    ) {
+        return "Today is " +
+            new Date().toLocaleDateString([], {
+                weekday: "long",
+                year: "numeric",
+                month: "long",
+                day: "numeric"
+            });
+    }
+
+
+    // ---------------- REMEMBER ----------------
+
+    if (
+        c.startsWith("remember ") ||
+        c.startsWith("remember that ")
+    ) {
+
+        let text = command
+            .replace(/^remember that /i, "")
+            .replace(/^remember /i, "")
+            .trim();
+
+        const match = text.match(/^my (.+?) is (.+)$/i);
+
+        if (match) {
+
+            const key = match[1].trim();
+            const value = match[2].trim();
+
+            saveMemory(key, value);
+
+            return `Okay Boss. I will remember that your ${key} is ${value}.`;
+        }
+
+        saveMemory("note", text);
+
+        return "Memory saved locally.";
+    }
+
+
+    // ---------------- RECALL ----------------
+
+    if (
+        c.includes("what is my") ||
+        c.includes("do you remember") ||
+        c === "memory" ||
+        c === "memories"
+    ) {
+
+        const match = command.match(/what is my (.+?)[?]*$/i);
+
+        if (match) {
+
+            const key = match[1].trim();
+
+            if (memory[key]) {
+                return `Your ${key} is ${memory[key]}.`;
+            }
+
+            return `I don't have a saved memory for your ${key}.`;
+        }
+
+        const keys = Object.keys(memory);
+
+        if (keys.length === 0) {
+            return "Local memory is currently empty.";
+        }
+
+        return "Local memories: " +
+            keys.map(key => `${key} = ${memory[key]}`).join(", ");
+    }
+
+
+    // ---------------- CLEAR MEMORY ----------------
+
+    if (
+        c === "clear memory" ||
+        c === "forget everything" ||
+        c === "delete memory"
+    ) {
+        clearMemory();
+        return "Local Rolex memory has been cleared.";
+    }
+
+
+    // ---------------- CALCULATOR ----------------
+
+    const result = calculate(command);
+
+    if (result !== null) {
+        return `Calculation result: ${result}`;
+    }
+
+
+    // ---------------- DEFAULT ----------------
+
+    return "I understood the command locally, Boss. This Brain is currently running without an external AI.";
+}
+
+
+// ------------------------------------------
+// SEND COMMAND
+// ------------------------------------------
 
 function sendCommand() {
+
     const command = input.value.trim();
 
     if (!command) return;
 
     addMessage("YOU", command);
+
     input.value = "";
 
+    const reply = processCommand(command);
+
     setTimeout(() => {
-        addMessage("ROLEX AI", processCommand(command));
-    }, 300);
+        addMessage("ROLEX", reply);
+    }, 250);
 }
 
-sendButton.addEventListener("click", sendCommand);
 
-input.addEventListener("keydown", (event) => {
-    if (event.key === "Enter") {
-        event.preventDefault();
-        sendCommand();
-    }
-});
+// ------------------------------------------
+// BUTTON
+// ------------------------------------------
+
+if (sendButton) {
+    sendButton.addEventListener("click", sendCommand);
+}
 
 
-/* VOICE */
+// ------------------------------------------
+// ENTER KEY
+// ------------------------------------------
+
+if (input) {
+    input.addEventListener("keydown", function(event) {
+
+        if (event.key === "Enter") {
+            event.preventDefault();
+            sendCommand();
+        }
+
+    });
+}
+
+
+// ==========================================
+// VOICE
+// ==========================================
+
+let recognition = null;
 
 const SpeechRecognition =
     window.SpeechRecognition ||
@@ -83,18 +336,22 @@ const SpeechRecognition =
 
 if (SpeechRecognition) {
 
-    const recognition = new SpeechRecognition();
+    recognition = new SpeechRecognition();
 
+    recognition.lang = "en-IN";
     recognition.continuous = false;
     recognition.interimResults = false;
-    recognition.lang = "en-IN";
 
-    recognition.onstart = () => {
-        voiceButton.innerHTML = "<span>●</span> LISTENING...";
-        addMessage("ROLEX AI", "Listening, Boss...");
+    recognition.onstart = function() {
+
+        if (voiceButton) {
+            voiceButton.innerHTML = "<span>●</span> LISTENING";
+            voiceButton.classList.add("listening");
+        }
     };
 
-    recognition.onresult = (event) => {
+
+    recognition.onresult = function(event) {
 
         const spokenText =
             event.results[0][0].transcript;
@@ -104,44 +361,75 @@ if (SpeechRecognition) {
         sendCommand();
     };
 
-    recognition.onerror = (event) => {
-        addMessage(
-            "ROLEX AI",
-            "Voice error: " + event.error
-        );
-    };
 
-    recognition.onend = () => {
-        voiceButton.innerHTML = "<span>●</span> VOICE";
-    };
+    recognition.onerror = function() {
 
-    voiceButton.addEventListener("click", () => {
-        try {
-            recognition.start();
-        } catch (error) {
-            console.log(error);
+        if (voiceButton) {
+            voiceButton.innerHTML = "<span>●</span> VOICE";
+            voiceButton.classList.remove("listening");
         }
-    });
+    };
+
+
+    recognition.onend = function() {
+
+        if (voiceButton) {
+            voiceButton.innerHTML = "<span>●</span> VOICE";
+            voiceButton.classList.remove("listening");
+        }
+    };
+
+
+    if (voiceButton) {
+
+        voiceButton.addEventListener("click", function() {
+
+            try {
+                recognition.start();
+            } catch {
+                // Prevent duplicate start error
+            }
+
+        });
+
+    }
 
 } else {
 
-    voiceButton.addEventListener("click", () => {
-        addMessage(
-            "ROLEX AI",
-            "Voice recognition is not supported by this browser."
-        );
-    });
+    if (voiceButton) {
+
+        voiceButton.addEventListener("click", function() {
+
+            addMessage(
+                "ROLEX",
+                "Voice recognition is not supported by this browser."
+            );
+
+        });
+
+    }
 }
 
 
-/* STARTUP */
+// ------------------------------------------
+// STARTUP
+// ------------------------------------------
 
-addMessage(
-    "ROLEX AI",
-    "Systems initialized, Boss."
-);
+function startup() {
 
-addMessage(
-    "ROLEX AI",
-    `Local time: ${getTime()}`
-);
+    addMessage(
+        "ROLEX",
+        "Systems initialized, Boss."
+    );
+
+    setTimeout(() => {
+
+        addMessage(
+            "ROLEX",
+            "Local Brain online. No external AI connected."
+        );
+
+    }, 500);
+}
+
+startup();
