@@ -1,98 +1,89 @@
 const chat = document.getElementById("chat");
-const input = document.getElementById("msg");
-const send = document.getElementById("send");
+const input = document.getElementById("commandInput");
+const sendButton = document.getElementById("sendButton");
+const voiceButton = document.getElementById("voiceButton");
 
-send.onclick = sendMessage;
-
-input.addEventListener("keydown", function(event) {
-    if (event.key === "Enter") {
-        sendMessage();
-    }
-});
-
-function sendMessage() {
-    const text = input.value.trim();
-
-    if (!text) return;
-
-    addMessage("YOU: " + text, "user");
-
-    input.value = "";
-
-    const reply = processCommand(text);
-
-    addMessage("ROLEX: Processing...", "ai");
-
-    setTimeout(() => {
-        chat.lastElementChild.innerText =
-            "ROLEX: " + reply;
-    }, 400);
-}
-
-function processCommand(text) {
-    const command = text.toLowerCase().trim();
-
-    if (
-        command === "hi" ||
-        command === "hello" ||
-        command === "hey rolex"
-    ) {
-        return "Hello, Boss. Systems are ready.";
-    }
-
-    if (
-        command === "status" ||
-        command === "system status"
-    ) {
-        return "All available systems are online. Voice and Memory are currently locked.";
-    }
-
-    if (command === "help") {
-        return "Available commands: HELLO, STATUS, TIME, DATE, HELP.";
-    }
-
-    if (command === "time") {
-        return "Current time is " +
-            new Date().toLocaleTimeString();
-    }
-
-    if (command === "date") {
-        return "Today's date is " +
-            new Date().toLocaleDateString();
-    }
-
-    return "Command received. I am currently operating in offline demo mode.";
-}
-
-function addMessage(text, type) {
+function addMessage(sender, text) {
     const message = document.createElement("div");
-
-    message.className = "msg " + type;
-    message.innerText = text;
-
+    message.className = "message";
+    message.innerHTML = `<span>${sender}:</span> ${text}`;
     chat.appendChild(message);
     chat.scrollTop = chat.scrollHeight;
 }
 
-function startup() {
-    const now = new Date();
+function getTime() {
+    return new Date().toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit"
+    });
+}
 
-    const time = now.toLocaleTimeString();
-    const date = now.toLocaleDateString();
+function getDate() {
+    return new Date().toLocaleDateString();
+}
 
-    addMessage(
-        "ROLEX: Systems initialized, Boss.",
-        "ai"
-    );
+function processCommand(command) {
+    const cmd = command.toLowerCase().trim();
+
+    if (
+        cmd === "hello" ||
+        cmd === "hi" ||
+        cmd === "hey rolex"
+    ) {
+        return "Hello Boss. Rolex AI is ready.";
+    }
+
+    if (
+        cmd.includes("status") ||
+        cmd.includes("system status")
+    ) {
+        return "All local systems are operational.";
+    }
+
+    if (cmd === "time") {
+        return `Current time is ${getTime()}.`;
+    }
+
+    if (cmd === "date") {
+        return `Today's date is ${getDate()}.`;
+    }
+
+    if (cmd === "help") {
+        return "Available commands: Hello, Status, Time, Date, Help.";
+    }
+
+    return "I received your command. Local demo mode is active.";
+}
+
+function sendCommand() {
+    const command = input.value.trim();
+
+    if (!command) return;
+
+    addMessage("YOU", command);
+    input.value = "";
 
     setTimeout(() => {
-        addMessage(
-            "ROLEX: " +
-            "Local time: " + time +
-            " | Date: " + date,
-            "ai"
-        );
-    }, 500);
+        const reply = processCommand(command);
+        addMessage("ROLEX AI", reply);
+    }, 350);
+}
+
+sendButton.addEventListener("click", sendCommand);
+
+input.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+        sendCommand();
+    }
+});
+
+voiceButton.addEventListener("click", () => {
+    addMessage("ROLEX AI", "Voice module is ready for the next stage.");
+});
+
+function startup() {
+    addMessage("ROLEX AI", "Systems initialized, Boss.");
+    addMessage("ROLEX AI", `Local time: ${getTime()}`);
 }
 
 startup();
