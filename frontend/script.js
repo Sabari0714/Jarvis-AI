@@ -28,7 +28,8 @@ function processCommand(command) {
     if (
         cmd === "hello" ||
         cmd === "hi" ||
-        cmd === "hey rolex"
+        cmd === "hey rolex" ||
+        cmd === "hello rolex"
     ) {
         return "Hello Boss. Rolex AI is ready.";
     }
@@ -37,22 +38,30 @@ function processCommand(command) {
         cmd.includes("status") ||
         cmd.includes("system status")
     ) {
-        return "All local systems are operational.";
+        return "All Rolex AI local systems are operational.";
     }
 
-    if (cmd === "time") {
+    if (cmd === "time" || cmd.includes("what time")) {
         return `Current time is ${getTime()}.`;
     }
 
-    if (cmd === "date") {
+    if (cmd === "date" || cmd.includes("today's date")) {
         return `Today's date is ${getDate()}.`;
     }
 
-    if (cmd === "help") {
-        return "Available commands: Hello, Status, Time, Date, Help.";
+    if (cmd === "help" || cmd.includes("what can you do")) {
+        return "I can currently handle Hello, Status, Time, Date and Help in local mode.";
     }
 
-    return "I received your command. Local demo mode is active.";
+    if (cmd.includes("who are you")) {
+        return "I am Rolex AI, your personal local intelligence interface.";
+    }
+
+    if (cmd.includes("are you online")) {
+        return "Yes Boss. Rolex AI interface is online. AI services are not connected yet.";
+    }
+
+    return "Command received, Boss. Rolex AI is currently running in local demo mode.";
 }
 
 function sendCommand() {
@@ -64,9 +73,8 @@ function sendCommand() {
     input.value = "";
 
     setTimeout(() => {
-        const reply = processCommand(command);
-        addMessage("ROLEX AI", reply);
-    }, 350);
+        addMessage("ROLEX AI", processCommand(command));
+    }, 300);
 }
 
 sendButton.addEventListener("click", sendCommand);
@@ -77,13 +85,85 @@ input.addEventListener("keydown", (event) => {
     }
 });
 
-voiceButton.addEventListener("click", () => {
-    addMessage("ROLEX AI", "Voice module is ready for the next stage.");
-});
+/* VOICE ENGINE */
+
+let recognition = null;
+
+const SpeechRecognition =
+    window.SpeechRecognition ||
+    window.webkitSpeechRecognition;
+
+if (SpeechRecognition) {
+
+    recognition = new SpeechRecognition();
+
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = "en-IN";
+
+    recognition.onstart = () => {
+        voiceButton.textContent = "🎙 LISTENING...";
+        addMessage("ROLEX AI", "Listening, Boss...");
+    };
+
+    recognition.onresult = (event) => {
+        const spokenText =
+            event.results[0][0].transcript;
+
+        input.value = spokenText;
+
+        addMessage("YOU", spokenText);
+
+        setTimeout(() => {
+            addMessage(
+                "ROLEX AI",
+                processCommand(spokenText)
+            );
+        }, 300);
+    };
+
+    recognition.onerror = (event) => {
+        addMessage(
+            "ROLEX AI",
+            `Voice error: ${event.error}`
+        );
+    };
+
+    recognition.onend = () => {
+        voiceButton.textContent = "🎙 VOICE";
+    };
+
+    voiceButton.addEventListener("click", () => {
+        try {
+            recognition.start();
+        } catch (error) {
+            console.log(error);
+        }
+    });
+
+} else {
+
+    voiceButton.addEventListener("click", () => {
+        addMessage(
+            "ROLEX AI",
+            "Voice recognition is not supported by this browser."
+        );
+    });
+
+}
+
+/* STARTUP */
 
 function startup() {
-    addMessage("ROLEX AI", "Systems initialized, Boss.");
-    addMessage("ROLEX AI", `Local time: ${getTime()}`);
+    addMessage(
+        "ROLEX AI",
+        "Systems initialized, Boss."
+    );
+
+    addMessage(
+        "ROLEX AI",
+        `Local time: ${getTime()}`
+    );
 }
 
 startup();
