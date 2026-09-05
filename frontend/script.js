@@ -24,8 +24,9 @@ function sendMessage() {
     addMessage("J.A.R.V.I.S: Processing...", "ai");
 
     setTimeout(() => {
-        chat.lastElementChild.innerText = "J.A.R.V.I.S: " + reply;
-    }, 500);
+        chat.lastElementChild.innerText =
+            "J.A.R.V.I.S: " + reply;
+    }, 400);
 }
 
 function processCommand(text) {
@@ -39,7 +40,10 @@ function processCommand(text) {
         return "Hello, Boss. Systems are ready.";
     }
 
-    if (command === "status" || command === "system status") {
+    if (
+        command === "status" ||
+        command === "system status"
+    ) {
         return "All available systems are online. Voice and Memory are currently locked.";
     }
 
@@ -48,11 +52,13 @@ function processCommand(text) {
     }
 
     if (command === "time") {
-        return "Current time is " + new Date().toLocaleTimeString();
+        return "Current time is " +
+            new Date().toLocaleTimeString();
     }
 
     if (command === "date") {
-        return "Today's date is " + new Date().toLocaleDateString();
+        return "Today's date is " +
+            new Date().toLocaleDateString();
     }
 
     return "Command received. I am currently operating in offline demo mode.";
@@ -67,3 +73,26 @@ function addMessage(text, type) {
     chat.appendChild(message);
     chat.scrollTop = chat.scrollHeight;
 }
+
+function startup() {
+    const now = new Date();
+
+    const time = now.toLocaleTimeString();
+    const date = now.toLocaleDateString();
+
+    addMessage(
+        "J.A.R.V.I.S: Systems initialized, Boss.",
+        "ai"
+    );
+
+    setTimeout(() => {
+        addMessage(
+            "J.A.R.V.I.S: " +
+            "Local time: " + time +
+            " | Date: " + date,
+            "ai"
+        );
+    }, 500);
+}
+
+window.addEventListener("load", startup);
