@@ -1945,29 +1945,40 @@ function sendCommand() {
 
     if (!input) return;
 
-    const command =
+    const raw =
         input.value.trim();
 
-    if (!command) return;
+    if (!raw) return;
 
-    addMessage(
-        "YOU",
-        command
-    );
+    // Support multiple commands
+    // separated by newline or ;
+    const commands =
+        raw
+            .split(/\n|;/)
+            .map(x => x.trim())
+            .filter(Boolean);
 
     input.value = "";
 
-    const reply =
-        processCommand(command);
-
-    setTimeout(() => {
+    commands.forEach((command, index) => {
 
         addMessage(
-            "ROLEX",
-            reply
+            "YOU",
+            command
         );
 
-    }, 180);
+        const reply =
+            processCommand(command);
+
+        setTimeout(() => {
+
+            addMessage(
+                "ROLEX",
+                reply
+            );
+
+        }, 250 * index);
+    });
 }
 
 if (sendButton) {
